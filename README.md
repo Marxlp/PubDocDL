@@ -4,7 +4,7 @@
 ## Brief Description
 
 ### Public Requirements
-The *python3.x* is needed. Besides all the third party libraries required in each downloader has been list in `requirements.txt` in their own folders.
+The *python3.x* is needed. Besides all the third party libraries required in each downloader have been listed in `requirements.txt` files in their own folders.
 ### 1 book118 (target: book118.com)
 #### Usage:
 `python book118downloader.py url_link filename`
