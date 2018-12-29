@@ -11,7 +11,7 @@ The *python3.x* is needed. Besides all the third party libraries required in eac
 #### Example:
 `python book118downloader.py https://max.book118.com/html/2018/0928/6012032034001221.shtm`
 #### Special Requirements:
-*fpdf*,*selenium*,*chrome webdriver*
+*fpdf*, *selenium*, *chrome webdriver*
 #### Limitation:
 only support *pdf*
 
