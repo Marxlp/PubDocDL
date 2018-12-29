@@ -10,8 +10,7 @@ def transfer_images_to_pdf(filepath, filename):
     pdf = FPDF()
     files = sorted(glob.glob(os.path.join(filepath, '*')))
     count = 0
-    total_number = len(files)
-    print('Generating pdf file. This may take a while')
+    print('Generating pdf file. It may take a while.')
     for image in files:
         pdf.add_page()
         pdf.image(image,0,0,210,297,imghdr.what(image).upper())
@@ -20,6 +19,7 @@ def transfer_images_to_pdf(filepath, filename):
     thread.daemon = True
     thread.start()
     pdf.output(filename,'F')
+    print("Finished.")
 
 
 def animate_processing():

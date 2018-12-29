@@ -16,18 +16,20 @@ Notifaction:
     Due the limit of the server in book118.com, the maximum 
     number of pages that can be downloaded was limited to 1000.
 """
-
-from urllib import request
+from urllib.request import urlopen
 from urllib import parse
-import json
-import pdb
 import os
 import sys
-import threading
-import time
+import json
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from pdfgenerator import transfer_images_to_pdf
+if __package__ is None:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from util.network import save_page, MultiThreadDownloader
+    from util.pdfgenerator import transfer_images_to_pdf
+else:
+    from ..util.network import save_page, MultiThreadDownloader
+    from ..util.pdfgenerator import transfer_images_to_pdf
 
 def crawl_data(browser, url, btn_id, filepath, page_limit=1000):
     # open the url
@@ -38,63 +40,57 @@ def crawl_data(browser, url, btn_id, filepath, page_limit=1000):
     # get base url
     src = browser.find_element_by_id('layer_view_iframe').get_attribute('src')
     host = parse.urlsplit(src).netloc
+    # get filename
+    filename = ''.join(browser.find_element_by_xpath('//*[@id="Preview"]/div[1]/span/h1').text.split(' ')[:-1])
     # turn to iframe
     browser.switch_to.frame("layer_view_iframe")
+    # check view type
+    try:
+        _ = browser.find_element_by_id('ctl')
+        type = 'down';
+    except Exception:
+        type = 'up'
     # get total page number
-    page_number = int(browser.find_element_by_id('pagecount').text)
-    # all paths
-    all_page_paths = []
-    # get urls of first three pages 
-    page_url = browser.find_element_by_xpath("//div[@id='" + 'p1' + "']/img").get_attribute('src')
-    all_page_paths.append(page_url)
-    page_name = parse.urlsplit(page_url).query[4:]
-
+    if type == 'down':
+        page_number = int(browser.find_element_by_id('pagecount').text)
+        page_url = browser.find_element_by_xpath("//div[@id='" + 'p1' + "']/img").get_attribute('src')
+        page_index = 2
+    else:
+        page_number = int(browser.find_element_by_id('pageCount').text)
+        page_url = browser.find_element_by_xpath("//div[@id='" + 'p0' + "']/img").get_attribute('src')
+        page_index = 1
+    
+    page_name = parse.urlsplit(page_url).query[4:-4]
     # find the key elements
     ids = [('f','Url'),('isMobile','IsMobi'),('isNet','IsNet'),('readLimit','ReadLimit'),('furl','Furl')]
+    if type == 'up':
+        ids.pop(2)
     get_dict = get_values_by_ids(browser, ids)
     get_dict['img'] = page_name
-    
-    threads = []
-    pages_processed = 0
-    info_prompt = show_info('Downloading the pages')
     page_limit = min(page_number, page_limit)
-    current_page = 0
-
-    def download_page_multithread(clean_all_paths=False, max_threads=10):
-        nonlocal pages_processed
-        nonlocal current_page
-        while threads or all_page_paths:
-            for thread in threads:
-                if not thread.is_alive():
-                    threads.remove(thread)
-                    pages_processed += 1
-                    info_prompt(pages_processed, page_limit)
-            while len(threads) < max_threads and all_page_paths:
-                page_url = all_page_paths.pop(0)
-                current_page += 1
-                thread = threading.Thread(target=save_page,args=(page_url, current_page, filepath))
-                thread.daemon = True
-                thread.start()
-                threads.append(thread)
-            # just run one time
-            if not clean_all_paths:
-                break
-
-    for i in range(len(all_page_paths) + 1, page_limit + 1):
-        request_url = 'https://' + host + '/pdf/GetNextPage/?' + parse.urlencode(get_dict)
+    
+    downloader = MultiThreadDownloader(page_limit, filepath, save_page)
+    downloader.add_urls(page_url)
+    for i in range(downloader.get_urls_number() + 1, page_limit + 1):
+        if type == 'down':
+            request_url = 'https://' + host + '/pdf/GetNextPage/?' + parse.urlencode(get_dict)
+        else:
+            get_dict['sn'] = page_index
+            request_url = 'https://' + host + '/PW/GetPage?' + parse.urlencode(get_dict)
         # get page url and page count
-        page_name, page_count = get_page_path(request_url) 
+        page_name, page_index = get_page_path(request_url) 
         page_url = 'https://' + host + '/img/?img=' + page_name
-        all_page_paths.append(page_url)
-        download_page_multithread()
+        downloader.add_urls(page_url)
+        downloader.download_link_multithread()
         # update img the the current name of page
         get_dict['img'] = page_name
 
-    download_page_multithread(clean_all_paths=True)
+    downloader.download_link_multithread(clean_all_paths=True)
 
     # back the main content
     browser.switch_to.default_content()
     browser.close()
+    return filename
     
 def get_values_by_ids(browser, ids):
     get_dict = {}
@@ -104,39 +100,17 @@ def get_values_by_ids(browser, ids):
 
 def get_page_path(request_url):
     try:
-        response = request.urlopen(request_url).read().decode('utf-8')
+        response = urlopen(request_url).read().decode('utf-8')
     except Exception as ex:
         raise ex
     else:
         data = json.loads(response)
         return data['NextPage'],data['PageIndex']
- 
-def save_page(page_url, page_count, filepath):
-    equip_num = lambda x:'%04d'%(x)
-    try:
-        data = request.urlopen(page_url).read()
-        with open(os.path.join(filepath, equip_num(page_count)), 'wb') as f:
-            f.write(data)
-    except Exception as ex:
-        raise ex
 
-def show_info(start_info):
-    print(start_info, end=':')
-    current_char = '/'
-    progress_chars = {'-':'\\','\\':'|','|':'/','/':'-'}
-    def show_process(current_number, total_number):
-        nonlocal current_char
-        char_output = current_char + str(current_number) + '/' + str(total_number)
-        sys.stdout.write(char_output)
-        sys.stdout.flush()
-        time.sleep(0.1)
-        sys.stdout.write('\b' * len(char_output))
-        current_char = progress_chars[current_char]
-    return show_process
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print('Usage:python book118_link pdf_filename')
+        print('Usage:python book118downloader.py book118_link [filename]')
         sys.exit(1)
     # folder to store the pics
     cache_path = '_temp'
@@ -155,11 +129,12 @@ if __name__ == '__main__':
         browser_options.add_argument('--headless')
         browser_options.add_argument('--disable-gpu')
         browser = webdriver.Chrome(chrome_options=browser_options)
-        crawl_data(browser, url, btn_id, cache_path)
-        print()
-        transfer_images_to_pdf(cache_path, sys.argv[2])
+        filename = crawl_data(browser, url, btn_id, cache_path)
+        if len(sys.argv) > 2:
+            transfer_images_to_pdf(cache_path, sys.argv[2])
+        else:
+            transfer_images_to_pdf(cache_path, filename)
     except Exception as ex:
-        #pdb.set_trace()
         browser.close()
         raise ex
     finally:
