@@ -13,7 +13,7 @@ The *python3.x* is needed. Besides all the third party libraries required in eac
 #### Special Requirements:
 *fpdf*, *selenium*, *chrome webdriver*
 #### Limitation:
-only support *pdf*
+current only support *pdf, docx, doc*
 
 ## License
 GNU GPL v3.0
