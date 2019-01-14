@@ -7,9 +7,11 @@
 The *python3.x* is needed. Besides all the third party libraries required in each downloader have been listed in `requirements.txt` files in their own folders.
 ### 1. book118 (target: book118.com)
 #### Usage:
-`python book118/book118downloader.py url_link`
+`python book118/book118downloader.py [-d DELAY] url_link`
 #### Example:
 `python book118/book118downloader.py https://max.book118.com/html/2018/0928/6012032034001221.shtm`
+or delay for 10s before downloading, if the network condition was bad
+`python book118/book118downloader.py -d 10 https://max.book118.com/html/2018/0928/6012032034001221.shtm`
 #### Special Requirements:
 *fpdf*, *selenium*, *chrome webdriver*
 #### Limitation:
