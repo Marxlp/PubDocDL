@@ -21,6 +21,8 @@ from urllib import parse
 import os
 import sys
 import json
+import time
+import argparse
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 if __package__ is None:
@@ -31,7 +33,7 @@ else:
     from ..util.network import save_page, MultiThreadDownloader
     from ..util.pdfgenerator import transfer_images_to_pdf
 
-def crawl_data(browser, url, btn_id, filepath, page_limit=1000):
+def crawl_data(browser, url, btn_id, filepath, page_limit=1000, page_download_delay=0):
     # open the url
     browser.get(url)
     # find the "full view" 
@@ -50,6 +52,8 @@ def crawl_data(browser, url, btn_id, filepath, page_limit=1000):
         type = 'down';
     except Exception:
         type = 'up'
+    # wait for a while to make sure the page would have been loaded.
+    time.sleep(page_download_delay)
     # get total page number
     if type == 'down':
         page_number = int(browser.find_element_by_id('pagecount').text)
@@ -107,11 +111,16 @@ def get_page_path(request_url):
         data = json.loads(response)
         return data['NextPage'],data['PageIndex']
 
+def parse_arguments(args):
+    parser = argparse.ArgumentParser(description="Parse the downloader arguments", prog='python book118downloader.py')
+    parser.add_argument('link', type=str,
+                        help='the link of the book that you want to download')
+    parser.add_argument('-d','--delay', default=0, type=int,
+                        help='delay for a while in seconds, before starting downloading and after the frame has been entered. Delay some time is import is the server response really slow.')
+    return parser.parse_args(args)
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print('Usage:python book118downloader.py book118_link [filename]')
-        sys.exit(1)
+    args = parse_arguments(sys.argv[1:])
     # folder to store the pics
     cache_path = '_temp'
     while True:
@@ -121,7 +130,7 @@ if __name__ == '__main__':
             break
     os.makedirs(cache_path)
 
-    url = sys.argv[1]
+    url = args.link
     btn_id = 'full'
     try:
         # not use gui and disable gpu to speed the process
@@ -129,7 +138,7 @@ if __name__ == '__main__':
         browser_options.add_argument('--headless')
         browser_options.add_argument('--disable-gpu')
         browser = webdriver.Chrome(chrome_options=browser_options)
-        filename = crawl_data(browser, url, btn_id, cache_path)
+        filename = crawl_data(browser, url, btn_id, cache_path, page_download_delay=args.delay)
         if len(sys.argv) > 2:
             transfer_images_to_pdf(cache_path, sys.argv[2])
         else:
