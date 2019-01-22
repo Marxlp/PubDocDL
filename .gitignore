@@ -106,3 +106,10 @@ venv.bak/
 # documents downloaded
 *.pdf
 *.doc
+
+# test file
+util/test*.py
+
+# current not support 
+jd/
+duxiu/

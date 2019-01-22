@@ -25,13 +25,7 @@ import time
 import argparse
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-if __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from util.network import save_page, MultiThreadDownloader
-    from util.pdfgenerator import transfer_images_to_pdf
-else:
-    from ..util.network import save_page, MultiThreadDownloader
-    from ..util.pdfgenerator import transfer_images_to_pdf
+from multiprocessing import Process
 
 def crawl_data(browser, url, btn_id, filepath, page_limit=1000, page_download_delay=0):
     # open the url
@@ -75,6 +69,7 @@ def crawl_data(browser, url, btn_id, filepath, page_limit=1000, page_download_de
     
     downloader = MultiThreadDownloader(page_limit, filepath, save_page)
     downloader.add_urls(page_url)
+    print(filename)
     for i in range(downloader.get_urls_number() + 1, page_limit + 1):
         if type == 'down':
             request_url = 'https://' + host + '/pdf/GetNextPage/?' + parse.urlencode(get_dict)
@@ -120,6 +115,16 @@ def parse_arguments(args):
     return parser.parse_args(args)
 
 if __name__ == '__main__':
+    if __package__ is None:
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from util.network import save_page, MultiThreadDownloader
+        from util.pdfgenerator import transfer_images_to_pdf
+        print('no package')
+    else:
+        from ..util.network import save_page, MultiThreadDownloader
+        from ..util.pdfgenerator import transfer_images_to_pdf
+        print('package')
+   
     args = parse_arguments(sys.argv[1:])
     # folder to store the pics
     cache_path = '_temp'
@@ -139,10 +144,14 @@ if __name__ == '__main__':
         browser_options.add_argument('--disable-gpu')
         browser = webdriver.Chrome(chrome_options=browser_options)
         filename = crawl_data(browser, url, btn_id, cache_path, page_download_delay=args.delay)
+
         if len(sys.argv) > 2:
-            transfer_images_to_pdf(cache_path, sys.argv[2])
+            process = Process(target=transfer_images_to_pdf, args=(cache_path, sys.argv[2]))
         else:
-            transfer_images_to_pdf(cache_path, filename)
+            process = Process(target=transfer_images_to_pdf, args=(cache_path, filename))
+        process.start()
+        process.join()
+
     except Exception as ex:
         browser.close()
         raise ex
