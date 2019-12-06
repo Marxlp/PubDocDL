@@ -90,7 +90,7 @@ def crawl_data(browser, url, btn_id, filepath, page_limit=1000, page_download_de
     browser.switch_to.default_content()
     browser.close()
     return filename
-    
+
 def get_values_by_ids(browser, ids):
     get_dict = {}
     for key,value in ids:
@@ -119,7 +119,7 @@ if __name__ == '__main__':
         sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from util.network import save_page, MultiThreadDownloader
         from util.pdfgenerator import transfer_images_to_pdf
-        print('no package')
+        print('running out of package')
     else:
         from ..util.network import save_page, MultiThreadDownloader
         from ..util.pdfgenerator import transfer_images_to_pdf
